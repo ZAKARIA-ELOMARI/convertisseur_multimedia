@@ -113,27 +113,29 @@ mkdir -p "$BACKUP_DIR"
 cp -r "$SRC_DIR/"* "$BACKUP_DIR"/
 log_info "Sauvegarde $SRC_DIR → $BACKUP_DIR"
 
-# 9. Organize by type
-ORG_DIR="$SRC_DIR/organized"
-mkdir -p "$ORG_DIR/audio" "$ORG_DIR/video" "$ORG_DIR/image"
-for f in "$SRC_DIR"/*; do
-  [ -f "$f" ] || continue
+# — Organisation par type (récursive) —
+ORG="$SRC_DIR/organized"
+mkdir -p "$ORG"/audio "$ORG"/video "$ORG"/image
+
+# Parcours tous les fichiers hors du dossier organized
+find "$SRC_DIR" -type f ! -path "$ORG/*" -print0 \
+| while IFS= read -r -d '' f; do
   ext="${f##*.}"
-  moved=false
-  for e in "${VIDEO_EXT[@]}"; do
-    [[ "$ext" == "$e" ]] && mv "$f" "$ORG_DIR/video/" && moved=true && break
-  done
-  $moved && continue
-  for e in "${AUDIO_EXT[@]}"; do
-    [[ "$ext" == "$e" ]] && mv "$f" "$ORG_DIR/audio/" && moved=true && break
-  done
-  $moved && continue
-  for e in "${IMAGE_EXT[@]}"; do
-    [[ "$ext" == "$e" ]] && mv "$f" "$ORG_DIR/image/" && moved=true && break
-  done
-  $moved && continue
-  log_info "Ignoré : $(basename "$f")"
+  case "${ext,,}" in
+    # vidéo
+    mkv|avi|mp4|mov|wmv|flv|webm|ts|m2ts|mts)
+      mv "$f" "$ORG/video/";;
+    # audio
+    flac|mp3|wav|ogg|aac|m4a|opus|wma)
+      mv "$f" "$ORG/audio/";;
+    # image
+    png|jpg|jpeg|bmp|tiff|gif|webp)
+      mv "$f" "$ORG/image/";;
+    *)
+      log INFOS "Ignoré: $(basename "$f")";;
+  esac
 done
+
 
 # 10. Interactive menu
 echo "Choisissez une catégorie à convertir :"
