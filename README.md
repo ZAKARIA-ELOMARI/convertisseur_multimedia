@@ -49,7 +49,7 @@ Sélection interactive de la catégorie et des formats source/cible
 
 Conversion en mode choisi
 
-Logs simultanés terminal + /var/log/.../history.log (format yyyy-mm-dd-hh-mm-ss : user : TYPE : message) Devoir_2_Mini_Projet_v1…Devoir_2_Mini_Projet_v1…
+Logs simultanés terminal + /var/log/.../history.log (format yyyy-mm-dd-hh-mm-ss : user : TYPE : message) 
 
 Test
 Générez le dossier de test :
