@@ -17,10 +17,10 @@
 	<em><code>❯ Seamlessly watch ➜ backup ➜ convert your media</code></em>
 </p>
 <p align="center">
-	<img src="https://img.shields.io/github/license/yourname/mediasmith?style=default&logo=opensourceinitiative&logoColor=white&color=0080ff" alt="license">
-	<img src="https://img.shields.io/github/last-commit/yourname/mediasmith?style=default&logo=git&logoColor=white&color=0080ff" alt="last-commit">
-	<img src="https://img.shields.io/github/languages/top/yourname/mediasmith?style=default&color=0080ff" alt="repo-top-language">
-	<img src="https://img.shields.io/github/languages/count/yourname/mediasmith?style=default&color=0080ff" alt="repo-language-count">
+	<img src="https://img.shields.io/github/license/ZAKARIA-ELOMARI/mediasmith?style=default&logo=opensourceinitiative&logoColor=white&color=0080ff" alt="license">
+	<img src="https://img.shields.io/github/last-commit/ZAKARIA-ELOMARI/mediasmith?style=default&logo=git&logoColor=white&color=0080ff" alt="last-commit">
+	<img src="https://img.shields.io/github/languages/top/ZAKARIA-ELOMARI/mediasmith?style=default&color=0080ff" alt="repo-top-language">
+	<img src="https://img.shields.io/github/languages/count/ZAKARIA-ELOMARI/mediasmith?style=default&color=0080ff" alt="repo-language-count">
 </p>
 
 ## 🔗 Table of Contents
@@ -105,7 +105,7 @@ mediasmith/
 
 ### ⚙️ Installation
 ```bash
-git clone https://github.com/yourname/mediasmith.git
+git clone https://github.com/ZAKARIA-ELOMARI/mediasmith.git
 cd mediasmith
 make all
 ```
@@ -168,3 +168,5 @@ MIT — see [LICENSE](LICENSE)
 
 ## 🙌 Acknowledgments
 Built with ❤️ using `ffmpeg`, `inotify-tools`, and `ImageMagick`.
+
+---
