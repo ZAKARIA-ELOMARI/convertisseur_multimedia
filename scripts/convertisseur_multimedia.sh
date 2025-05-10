@@ -9,7 +9,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 ### Chargement des modules ###
-# vérifie et installe ffmpeg, inotify-tools, imagemagick
 source "$SCRIPT_DIR/deps_check.sh"
 source "$PROJECT_ROOT/lib/utils.sh"
 source "$PROJECT_ROOT/lib/logging.sh"
@@ -67,7 +66,7 @@ fi
 
 ### Préparation des dossiers ###
 LOG_DIR="${CUSTOM_LOG_DIR:-/var/log/convertisseur_multimedia}"
-init_logging            # définit LOG_FILE et crée le répertoire
+init_logging            # crée LOG_DIR et history.log
 BACKUP_ROOT="$PROJECT_ROOT/backup"
 OUTPUT_DIR="$PROJECT_ROOT/output"
 ensure_dir "$BACKUP_ROOT" "$OUTPUT_DIR"
@@ -86,7 +85,7 @@ fi
 
 ### Organisation optionnelle ###
 if ask_yes_no "Organiser par type ?" "N"; then
-  log_info "Organisation des fichiers dans source/organized"
+  log_info "Organisation des fichiers dans $SOURCE_DIR/organized"
   WORK_DIR="$SOURCE_DIR/organized"
   rm -rf "$WORK_DIR"
   mkdir -p "$WORK_DIR"/{audio,video,images}
@@ -108,19 +107,23 @@ else
   WORK_DIR="$SOURCE_DIR"
 fi
 
-### Choix du contenu à convertir ###
-TARGET=""  # évite le “unbound variable”
-CHOICE=$(select_option "Que convertir ?" "Tous" "Audio" "Vidéo" "Images")
-case "$CHOICE" in
-  Tous)   TARGET="$WORK_DIR"       ;;
-  Audio)  TARGET="$WORK_DIR/audio" ;;
-  Vidéo)  TARGET="$WORK_DIR/video" ;;
-  Images) TARGET="$WORK_DIR/images";;
-  *)      log_error "Choix invalide."; exit 1 ;;
+### Choix du contenu à convertir (numérique) ###
+echo "Que convertir ?"
+echo "  1) Tous types"
+echo "  2) Audio"
+echo "  3) Vidéo"
+echo "  4) Images"
+read -p "Choix [1-4] : " NUM
+case "$NUM" in
+  1) TARGET="$WORK_DIR"       ;;
+  2) TARGET="$WORK_DIR/audio" ;;
+  3) TARGET="$WORK_DIR/video" ;;
+  4) TARGET="$WORK_DIR/images" ;;
+  *) log_error "Choix invalide."; exit 1 ;;
 esac
 
-if [ -z "$TARGET" ] || [ ! -d "$TARGET" ]; then
-  log_error "Dossier cible invalide ou inexistant : $TARGET"
+if [ ! -d "$TARGET" ]; then
+  log_error "Dossier cible inexistant : $TARGET"
   exit 1
 fi
 
@@ -159,8 +162,7 @@ else
   else
     for f in "$TARGET"/*; do
       [ -f "$f" ] || continue
-      base="${f##*/}"
-      name="${base%.*}"
+      base="${f##*/}"; name="${base%.*}"
       cmd=( ffmpeg -y -i "$f" "$OUTPUT_DIR/${name}.${OUT_EXT}" )
       if [ "$FORK" = true ]; then
         "${cmd[@]}" &
