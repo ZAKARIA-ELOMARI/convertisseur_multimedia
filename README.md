@@ -9,7 +9,7 @@
 ║   ██║ ╚═╝ ██║███████╗██████╔╝██║██║  ██║███████║██║ ╚═╝ ██║██║   ██║   ██║  ██║   ║
 ║   ╚═╝     ╚═╝╚══════╝╚═════╝ ╚═╝╚═╝  ╚═╝╚══════╝╚═╝     ╚═╝╚═╝   ╚═╝   ╚═╝  ╚═╝   ║
 ║                                                                                   ║
-║                              Mediasmith v1.0.0                                    ║
+║                              Mediasmith v1.1.0                                    ║
 ╚═══════════════════════════════════════════════════════════════════════════════════╝
 </pre>
 </div>
@@ -39,48 +39,58 @@
 ---
 
 ## 📍 Overview
-**Mediasmith** is a Bash‑powered toolkit that **monitors**, **backs up**, **organises** and **converts** your multimedia files—video, audio and images—in real‑time.  
-Driven by `inotifywait`, `ffmpeg`, and `ImageMagick`, it forges any incoming media into the format you choose, while keeping pristine timestamped copies of the originals and logging every step for full traceability.
+**Mediasmith** (v1.0.1) is a Bash toolkit that **monitors**, **backs up**, **organizes**, and **converts** multimedia files (video, audio, images) in real time.  
+It uses `inotifywait`, `ffmpeg`, and `ImageMagick`, and includes a native POSIX‑threaded helper for high‑performance parallel conversion.
 
 ---
 
 ## 👾 Features
-- **Live watch‑folder**: automatically reacts when new files land in a directory.  
-- **Multi‑type support**: videos (`mp4`, `mkv`, `avi`…), audio (`wav`, `flac`, `mp3`…), images (`png`, `jpg`, `gif`…).  
-- **One‑click organisation**: optional sorting into `audio/`, `video/`, `images/` before processing.  
-- **Safe backups**: originals copied to `backup/<timestamp>/` with preserved tree structure.  
-- **Flexible conversion**  
-  - Merge or one‑by‑one mode  
-  - Fork (`&`), subshell, or **native POSIX threads** via the `thread_converter` helper.  
-- **Verbose logging** to `/var/log/convertisseur_multimedia/history.log`.  
-- **Self‑installing**: dependency checker fetches `ffmpeg`, `inotify-tools`, `imagemagick` if missing.  
-- **Portable build**: simple `Makefile` compiles the C helper and prepares everything.  
+- **Live watch‑folder**: reacts to new files via `inotifywait` and a `handle_new_file` handler that auto‑backs up and converts.
+- **Safe backups**: copies originals into `backup/<timestamp>/` with full directory tree, using `backup.sh` with `init_backup` and `backup_directory`.
+- **One‑click organisation**: optional sorting into `audio/`, `video/`, and `images/` before processing.
+- **Flexible conversion**:
+  - **Merge mode**: concat media into one file.
+  - **Single mode**: convert file‑by‑file.
+  - **Fork**, **subshell**, or **POSIX threads** (`thread_converter` in C) modes.
+  - **Improved thread_converter** logs each thread’s work with timestamp, user, and mutex‑protected output, and cleans up resources.
+- **Robust logging**:
+  - `logging.sh` writes to `/var/log/convertisseur_multimedia/history.log`.
+  - Falls back to `logs/history.log` if `/var/log` is not writable.
+  - Uses standardized format: `YYYY-MM-DD-HH-MM-SS : user : LEVEL : message`.
+- **Error codes & validation**:
+  - `main_script.sh` enforces mutual exclusion of `-f`, `-t`, `-s`.
+  - Provides specific exit codes for missing arguments, invalid choices, or permission issues.
+- **Self‑installing**: `deps_check.sh` auto‑installs `ffmpeg`, `inotify-tools`, and `imagemagick` if missing.
+- **Portable build**: `Makefile` compiles the C helper and sets up everything with `make all`.
 
 ---
 
 ## 📁 Project Structure
 ```text
 mediasmith/
-├── bin/                    # compiled thread_converter
-├── backup/                 # timestamped backups (created at runtime)
+├── bin/
+│   └── thread_converter            # POSIX‑threads helper (C, gcc -pthread)
+├── backup/                         # timestamped backups
 ├── config/
-│   └── config.ini          # default paths & options
-├── lib/                    # reusable Bash modules
+│   └── config.ini                  # default paths & options
+├── lib/                            # Bash modules
 │   ├── backup.sh
 │   ├── conversion.sh
 │   ├── logging.sh
 │   ├── monitor.sh
 │   └── utils.sh
-├── output/                 # converted results (created at runtime)
+├── logs/
+│   └── history.log                 # fallback logs
+├── output/                         # conversion results
 ├── scripts/
-│   ├── convertisseur_multimedia.sh  # main entry‑point
-│   ├── deps_check.sh
-│   └── populate_test_files.sh
+│   ├── convertisseur_multimedia.sh # main script (watch, menu, backup, convert)
+│   ├── deps_check.sh               # dependency installer
+│   └── populate_test_files.sh      # test files generator
 ├── src/
-│   └── thread_converter.c  # POSIX‑threads helper
+│   └── thread_converter.c          # C source for threaded conversion
 ├── Makefile
 ├── LICENSE
-└── README.md
+└── README.md                       # this file
 ```
 
 ---
@@ -88,83 +98,73 @@ mediasmith/
 ## 🚀 Getting Started
 
 ### ☑️ Prerequisites
-| Requirement | Minimum version | Why |
-|-------------|-----------------|-----|
-| Linux distro| any with `apt`, `dnf`, or `yum` | package install |
-| Bash        | 4.0             | arrays & `declare -F` |
-| GCC & make  | standard build tools | compile `thread_converter` |
-| Internet    | for first‑run dependency install |
+- Linux (Debian, Ubuntu, CentOS, Fedora…)  
+- Bash 4+  
+- GCC & Make  
+- Internet (for first-run installs)
 
 ### ⚙️ Installation
 ```bash
 git clone https://github.com/yourname/mediasmith.git
 cd mediasmith
-
-# install system deps & build the C helper
 make all
 ```
-
-This will:
-1. run `scripts/deps_check.sh` → installs **ffmpeg**, **inotify‑tools**, **ImageMagick**;  
-2. compile `src/thread_converter.c` → `bin/thread_converter`;  
-3. leave you ready to roll.
+This runs:
+1. `scripts/deps_check.sh` → installs **ffmpeg**, **inotify-tools**, **ImageMagick**  
+2. `make build` → compiles `src/thread_converter.c` → `bin/thread_converter`
 
 ### 🤖 Usage
-Generate a sandbox folder of sample media (optional):
+(Optional) generate sample media:
 ```bash
-make test    # or: scripts/populate_test_files.sh
+make test
 ```
 
-Run Mediasmith on that folder:
+Run the main script:
 ```bash
-# 4 POSIX threads, output format chosen interactively
+scripts/convertisseur_multimedia.sh [options] <source_dir>
+```
+
+**Common options**  
+| Flag   | Description                                      |
+|--------|--------------------------------------------------|
+| `-h`   | show help                                        |
+| `-f`   | fork mode (`&`)                                  |
+| `-s`   | subshell mode                                    |
+| `-t`   | thread mode (uses `bin/thread_converter`)        |
+| `-j N` | number of threads (with `-t`)                    |
+| `-l DIR`| custom log directory                            |
+| `-r`   | restore last backup                              |
+
+**Example**  
+```bash
 scripts/convertisseur_multimedia.sh -t -j 4 test_files
 ```
 
-Common flags:
-| Flag | Purpose |
-|------|---------|
-| `-f` | fork each conversion (`&`) |
-| `-s` | run in a subshell |
-| `-t` | thread mode (C helper) |
-| `-j N` | number of threads (with `-t`) |
-| `-l DIR` | custom log dir |
-| `-r` | restore last backup |
-
 ### 🧪 Testing
-The project is mostly shell; integration tests are manual:
-
 ```bash
-# create fixtures
 make test
-# convert with each execution mode
 scripts/convertisseur_multimedia.sh -f test_files
 scripts/convertisseur_multimedia.sh -s test_files
 scripts/convertisseur_multimedia.sh -t -j 2 test_files
 ```
-
-Check:
-* `output/` contains converted files in the requested format.  
-* `backup/<timestamp>/` contains untouched originals.  
-* `logs/history.log` records INFO/ERROR lines for every step.
-
+- Check `output/` for converted files.  
+- Check `backup/<timestamp>/` for originals.  
+- Check `logs/history.log` or `/var/log/.../history.log` for detailed logs.
 
 ---
 
 ## 🔰 Contributing
-Feel free to open issues or PRs! For major changes, please file an issue first to discuss what you would like to change.
-
-1. Fork → create feature branch → commit → push → pull request.  
-2. Follow existing code style; shell scripts are formatted with `shfmt`.
+1. Fork & clone  
+2. Create a branch (`git checkout -b feature/xyz`)  
+3. Commit, push, PR  
+4. Follow shell style (use `shfmt`)
 
 ---
 
 ## 🎗 License
-Mediasmith is released under the **MIT License**. See [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE)
 
 ---
 
 ## 🙌 Acknowledgments
-Inspired by the simplicity of classic Unix tools and the awesome open‑source projects `ffmpeg`, `inotify‑tools`, and `ImageMagick`.
-
----
+Built with ❤️ using `ffmpeg`, `inotify-tools`, and `ImageMagick`.

@@ -6,6 +6,7 @@
 #include <pthread.h>
 #include <limits.h>
 #include <unistd.h>
+#include <time.h>
 
 typedef struct {
     char *filepath;
@@ -17,6 +18,42 @@ static job_t *jobs       = NULL;
 static int      job_count = 0;
 static int      next_job  = 0;
 static pthread_mutex_t queue_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t log_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// Format de sortie tel que défini dans le pdf:
+// yyyy-mm-dd-hh-mm-ss : username : INFOS/ERROR : message
+static void log_message(const char *level, const char *message) {
+    time_t now;
+    struct tm *tm_info;
+    char timestamp[20];
+    char username[64];
+    
+    // Mutex pour éviter entrelacement des logs
+    pthread_mutex_lock(&log_mutex);
+    
+    // Obtenir timestamp au format spécifié
+    time(&now);
+    tm_info = localtime(&now);
+    strftime(timestamp, sizeof(timestamp), "%Y-%m-%d-%H-%M-%S", tm_info);
+    
+    // Obtenir username
+    if (getlogin_r(username, sizeof(username)) != 0) {
+        strncpy(username, "unknown", sizeof(username));
+    }
+    
+    // Afficher log selon le format requis
+    printf("%s : %s : %s : %s\n", timestamp, username, level, message);
+    
+    pthread_mutex_unlock(&log_mutex);
+}
+
+static void log_info(const char *message) {
+    log_message("INFOS", message);
+}
+
+static void log_error(const char *message) {
+    log_message("ERROR", message);
+}
 
 static char *basename_noext(const char *path) {
     const char *base = strrchr(path, '/');
@@ -28,7 +65,9 @@ static char *basename_noext(const char *path) {
 }
 
 static void *worker(void *arg) {
-    (void)arg;
+    int thread_id = *((int*)arg);
+    char log_buffer[512];
+    
     while (1) {
         pthread_mutex_lock(&queue_mutex);
         if (next_job >= job_count) {
@@ -44,22 +83,36 @@ static void *worker(void *arg) {
                  job.out_dir, name, job.out_ext);
         free(name);
 
+        // Préparer la commande avec redirection vers /dev/null
         char cmd[PATH_MAX * 2];
         snprintf(cmd, sizeof(cmd),
                  "ffmpeg -y -i \"%s\" \"%s\" > /dev/null 2>&1",
                  job.filepath, outpath);
 
-        printf("[THREAD %lu] %s\n", pthread_self(), cmd);
+        // Afficher info sur l'opération en cours
+        snprintf(log_buffer, sizeof(log_buffer), 
+                "THREAD-%d: Conversion de %s vers %s", 
+                thread_id, job.filepath, outpath);
+        log_info(log_buffer);
+        
+        // Exécuter la commande
         int ret = system(cmd);
+        
+        // Informer du résultat
         if (ret == 0) {
-            printf("[THREAD %lu] OK: %s → %s\n",
-                   pthread_self(), job.filepath, outpath);
+            snprintf(log_buffer, sizeof(log_buffer), 
+                    "THREAD-%d: Succès: %s → %s", 
+                    thread_id, job.filepath, outpath);
+            log_info(log_buffer);
         } else {
-            fprintf(stderr,
-                    "[THREAD %lu] ERROR: échec %s\n",
-                    pthread_self(), job.filepath);
+            snprintf(log_buffer, sizeof(log_buffer), 
+                    "THREAD-%d: Échec de conversion pour %s (code=%d)", 
+                    thread_id, job.filepath, ret);
+            log_error(log_buffer);
         }
     }
+    
+    free(arg);
     return NULL;
 }
 
@@ -118,18 +171,45 @@ int main(int argc, char **argv) {
         return EXIT_FAILURE;
     }
 
+    int *thread_ids = malloc(sizeof(int) * threads);
+    if (!thread_ids) {
+        perror("malloc");
+        free(jobs);
+        free(tids);
+        return EXIT_FAILURE;
+    }
+
+    char log_buffer[256];
+    snprintf(log_buffer, sizeof(log_buffer), 
+            "Démarrage de la conversion avec %d threads pour %d fichiers", 
+            threads, job_count);
+    log_info(log_buffer);
+
     for (int t = 0; t < threads; t++) {
-        if (pthread_create(&tids[t], NULL, worker, NULL) != 0) {
+        thread_ids[t] = t + 1;
+        int *arg = malloc(sizeof(int));
+        if (!arg) {
+            perror("malloc");
+            return EXIT_FAILURE;
+        }
+        *arg = thread_ids[t];
+        if (pthread_create(&tids[t], NULL, worker, arg) != 0) {
             perror("pthread_create");
+            free(arg);
             return EXIT_FAILURE;
         }
     }
+    
     for (int t = 0; t < threads; t++) {
         pthread_join(tids[t], NULL);
     }
 
+    log_info("Toutes les opérations de conversion sont terminées");
+
+    free(thread_ids);
     free(tids);
     free(jobs);
     pthread_mutex_destroy(&queue_mutex);
+    pthread_mutex_destroy(&log_mutex);
     return EXIT_SUCCESS;
 }
