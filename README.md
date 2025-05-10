@@ -65,8 +65,6 @@ mediasmith/
 ├── backup/                 # timestamped backups (created at runtime)
 ├── config/
 │   └── config.ini          # default paths & options
-├── docs/
-│   └── user_manual.pdf
 ├── lib/                    # reusable Bash modules
 │   ├── backup.sh
 │   ├── conversion.sh
