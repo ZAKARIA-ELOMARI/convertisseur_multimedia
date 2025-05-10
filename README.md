@@ -97,7 +97,7 @@ mediasmith/
 
 ### ⚙️ Installation
 ```bash
-git clone https://github.com/yourname/mediasmith.git
+git clone https://github.com/ZAKARIA-ELOMARI/mediasmith.git
 cd mediasmith
 
 # install system deps & build the C helper
